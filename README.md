@@ -1,0 +1,1 @@
+# jellyfin-smart-languages
