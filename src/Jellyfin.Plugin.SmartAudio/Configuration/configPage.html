@@ -8,10 +8,112 @@
     <div id="SmartAudioConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
         <div data-role="content">
             <div class="content-primary">
-                <h2 class="sectionTitle">Smart Audio Language</h2>
-                <p>The plugin is installed. It has no settings yet: the server default profile and per-user preferences come in a later version.</p>
+                <form id="SmartAudioConfigForm">
+                    <h2 class="sectionTitle">Smart Audio Language</h2>
+                    <p>
+                        Test rule for the milestone 1 spike: each user listed here starts playback on the first audio track
+                        in their language, when the item has one. Use an ISO 639-2 tag, as shown in the media info
+                        (<code>jpn</code>, <code>eng</code>, <code>fre</code>). The real per-user preferences replace this
+                        in a later version.
+                    </p>
+                    <div id="SmartAudioRows"></div>
+                    <div class="inputContainer">
+                        <button is="emby-button" type="button" id="SmartAudioAddRow" class="raised button-alt">
+                            <span>Add user</span>
+                        </button>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
+        <template id="SmartAudioRowTemplate">
+            <div class="smartAudioRow" style="display: flex; gap: 1em; align-items: flex-end; flex-wrap: wrap;">
+                <div class="selectContainer" style="flex: 2 1 12em;">
+                    <select is="emby-select" class="smartAudioUser" label="User"></select>
+                </div>
+                <div class="inputContainer" style="flex: 1 1 6em;">
+                    <input is="emby-input" type="text" class="smartAudioLanguage" label="Audio language" maxlength="3" pattern="[A-Za-z]{3}" required>
+                </div>
+                <div class="inputContainer">
+                    <button is="emby-button" type="button" class="smartAudioRemove raised">
+                        <span>Remove</span>
+                    </button>
+                </div>
+            </div>
+        </template>
+        <script type="text/javascript">
+            (function () {
+                var pluginId = '26618d45-9cdd-4fda-8779-5baa1ec293b1';
+                var page = document.querySelector('#SmartAudioConfigPage');
+                var rows = page.querySelector('#SmartAudioRows');
+                var users = [];
+
+                function addRow(entry) {
+                    var row = page.querySelector('#SmartAudioRowTemplate').content.firstElementChild.cloneNode(true);
+                    var select = row.querySelector('.smartAudioUser');
+                    users.forEach(function (user) {
+                        var option = document.createElement('option');
+                        option.value = user.Id;
+                        option.textContent = user.Name;
+                        select.appendChild(option);
+                    });
+                    if (entry && !users.some(function (user) { return user.Id === entry.UserId; })) {
+                        var missing = document.createElement('option');
+                        missing.value = entry.UserId;
+                        missing.textContent = 'Unknown user (' + entry.UserId + ')';
+                        select.appendChild(missing);
+                    }
+                    if (entry) {
+                        select.value = entry.UserId;
+                        row.querySelector('.smartAudioLanguage').value = entry.Language;
+                    }
+                    row.querySelector('.smartAudioRemove').addEventListener('click', function () {
+                        row.remove();
+                    });
+                    rows.appendChild(row);
+                }
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    Promise.all([ApiClient.getUsers(), ApiClient.getPluginConfiguration(pluginId)]).then(function (results) {
+                        // User IDs come back without dashes from the users endpoint and with them from the configuration.
+                        users = results[0].map(function (user) {
+                            return { Id: user.Id.replace(/-/g, ''), Name: user.Name };
+                        });
+                        rows.innerHTML = '';
+                        (results[1].SpikeUserLanguages || []).forEach(function (entry) {
+                            addRow({ UserId: entry.UserId.replace(/-/g, ''), Language: entry.Language });
+                        });
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                page.querySelector('#SmartAudioAddRow').addEventListener('click', function () {
+                    addRow(null);
+                });
+
+                page.querySelector('#SmartAudioConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.SpikeUserLanguages = Array.prototype.map.call(rows.querySelectorAll('.smartAudioRow'), function (row) {
+                            return {
+                                UserId: row.querySelector('.smartAudioUser').value,
+                                Language: row.querySelector('.smartAudioLanguage').value.trim().toLowerCase()
+                            };
+                        });
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+            })();
+        </script>
     </div>
 </body>
 </html>
