@@ -1,0 +1,22 @@
+# Jellyfin 12.4 with the plugin loaded, for manual tests. See docs/dev-server.md.
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:12.4
+    ports:
+      - "8096:8096"
+    environment:
+      # The plugin's rewrite log lines are at Debug level.
+      JELLYFIN_Serilog__MinimumLevel__Override__Jellyfin.Plugin.SmartAudio: Debug
+    volumes:
+      - config:/config
+      - cache:/cache
+      # Build output of `dotnet build -c Release`; restart the container after rebuilding. Writable:
+      # the server writes the plugin's meta.json there and does not start if it can't.
+      - ./src/Jellyfin.Plugin.SmartAudio/bin/Release/net10.0:/config/plugins/SmartAudio
+      # Test media from dev/make-test-media.sh.
+      - ./dev/media:/media:ro
+    restart: unless-stopped
+
+volumes:
+  config:
+  cache:

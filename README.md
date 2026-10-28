@@ -20,6 +20,11 @@ The plugin is `src/Jellyfin.Plugin.SmartAudio/bin/Release/net10.0/Jellyfin.Plugi
 Every CI run also uploads it as the `Jellyfin.Plugin.SmartAudio` artifact (Actions tab → the run →
 Artifacts).
 
+## Dev server
+
+A Jellyfin 12.4 server in Docker with the plugin, test media and test users, in four commands:
+[docs/dev-server.md](docs/dev-server.md).
+
 ## Install by hand
 
 1. Create a folder for the plugin in the server's `plugins/` folder, which is in its data
