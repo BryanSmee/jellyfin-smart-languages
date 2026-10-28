@@ -26,5 +26,6 @@ RUN git clone --depth 1 --branch "$JELLYFIN_TAG" https://github.com/jellyfin/jel
     && test "$(git -C /opt/jellyfin-web rev-parse HEAD)" = "$JELLYFIN_WEB_COMMIT" \
     && rm -rf /opt/jellyfin/.git /opt/jellyfin-web/.git \
     && chmod -R a+rX,a-w /opt/jellyfin /opt/jellyfin-web
+RUN mkdir -p /home/node/.nuget && chown node:node /home/node/.nuget
 
 USER node
