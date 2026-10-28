@@ -1,0 +1,17 @@
+---
+name: "Smart Audio Language"
+guid: "26618d45-9cdd-4fda-8779-5baa1ec293b1"
+version: "0.1.0.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
+overview: "Picks each user's audio track automatically"
+description: >
+  Per-user audio track selection: fixed language or original version,
+  ordered fallback chains, per-library and per-series overrides, and
+  regional variants (VFF / VFQ, Castilian / Latin American Spanish).
+category: "General"
+owner: "BryanSmee"
+artifacts:
+- "Jellyfin.Plugin.SmartAudio.dll"
+changelog: >
+  Project scaffold: the plugin loads and does nothing yet.

@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.SmartAudio.sln
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.SmartAudio.sln --no-restore --configuration Release -warnaserror
+      - name: Test
+        run: dotnet test Jellyfin.Plugin.SmartAudio.sln --no-build --configuration Release
+      - name: Check formatting
+        run: dotnet format Jellyfin.Plugin.SmartAudio.sln --no-restore --verify-no-changes
+      - name: Upload plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: Jellyfin.Plugin.SmartAudio
+          path: src/Jellyfin.Plugin.SmartAudio/bin/Release/net10.0/Jellyfin.Plugin.SmartAudio.dll
+          if-no-files-found: error
