@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="../../build.yaml" Link="build.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/Jellyfin.Plugin.SmartAudio/Jellyfin.Plugin.SmartAudio.csproj" />
   </ItemGroup>
 

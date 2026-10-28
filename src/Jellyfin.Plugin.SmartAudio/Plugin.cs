@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.SmartAudio;
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     /// <summary>
-    /// The plugin's unique ID, also declared in build.yaml and the configuration page.
+    /// The plugin's unique ID, also declared in build.yaml.
     /// </summary>
     public const string PluginId = "26618d45-9cdd-4fda-8779-5baa1ec293b1";
 
