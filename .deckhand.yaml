@@ -1,0 +1,26 @@
+# .deckhand.yaml
+
+# The base image has Node 26 but no .NET; Jellyfin 12.4 plugins need the .NET 10 SDK, and the pinned Jellyfin sources live there too.
+dockerfile: .deckhand/Dockerfile
+
+# Restore NuGet packages once a solution exists; skipped while the repo is still spec-only.
+setup: |
+  sln=$(ls *.sln *.slnx 2>/dev/null | head -n1)
+  if [ -n "$sln" ]; then dotnet restore "$sln"; else echo "No solution yet: skipping restore"; fi
+
+# NuGet's package folder, so each run doesn't download Jellyfin.Controller and the others again.
+caches:
+  - /home/node/.nuget/packages
+
+# How to build, test and format; there's no AGENTS.md to say it.
+instructions: .deckhand/instructions.md
+
+# A review of every pull request when it turns ready, and up to 3 fix runs while it requests changes.
+review:
+  on: ready
+  fix: 3
+
+# Pinned issues whose comments become issues.
+inbox:
+  ideas: 3
+  bugs: 4
