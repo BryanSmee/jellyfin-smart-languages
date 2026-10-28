@@ -3,3 +3,6 @@ obj/
 .vs/
 .idea/
 artifacts
+
+# Test media from dev/make-test-media.sh
+dev/media/

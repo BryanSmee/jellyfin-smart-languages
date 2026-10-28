@@ -60,7 +60,7 @@ Every setting is stored per Jellyfin user ID. A rule is resolved from the most s
 
 **Server default profile (admin).** The admin defines a default profile (same fields as the global profile) on the dashboard page. It applies to every user who hasn't set a field themselves, including users created later, and can also carry default library overrides (e.g. "Anime" library → Original). A user's own settings always take precedence; the admin can reset a user to defaults.
 
-**Manual switches.** When `RespectManualChoice` is on and the user changes audio track during playback of an episode, the plugin silently stores a series-level override with that track's language + variant. It then sends a notification to the playing session ("Audio for *Series* set to Japanese — change in Audio language settings") through Jellyfin's display-message session command. Clients that don't show session messages simply get no notification; the override still applies, and it is visible and removable on the user page. This replaces Jellyfin's index-based "remember selections", which breaks when track order differs between episodes.
+**Manual switches.** When `RespectManualChoice` is on and the user changes audio track during playback of an episode, the plugin silently stores a series-level override with that track's language + variant. It then sends a notification to the playing session ("Audio for *Series* set to Japanese — change in Audio language settings") through Jellyfin's display-message session command. Clients that don't show session messages simply get no notification; the override still applies, and it is visible and removable on the user page. This replaces Jellyfin's "remember selections", which is per-client. Jellyfin Web 12.4's version scores the previous track's codec, relative index, title and language, so it survives a change of track order. It sends its pick as an explicit `AudioStreamIndex`, which the plugin leaves alone: with that setting on, Web's carry-over wins on the next episode.
 
 ## Original language resolution
 
@@ -91,7 +91,7 @@ The default source is a static mapping `provider ID → original language`, vers
 
 Each result is stored with `source`, `confidence` (high / medium / guessed) and `fetchedAt`. Refresh on metadata refresh, or every 90 days.
 
-**Normalisation.** Store everything as BCP 47 (`ja`, `fr`, `zh-yue`). Map ISO 639-1 ↔ 639-2/B ↔ 639-2/T (`fre`/`fra`, `ger`/`deu`, `chi`/`zho`). Map TMDB's non-standard `cn` to Cantonese (`yue`), and its `xx` (no language) to "none".
+**Normalisation.** Store everything as BCP 47 (`ja`, `fr`, `zh-yue`). Map ISO 639-1 ↔ 639-2/B ↔ 639-2/T (`fre`/`fra`, `ger`/`deu`, `chi`/`zho`). Map TMDB's non-standard `cn` to Cantonese (`yue`), and its `xx` (no language) to "none". Jellyfin itself does not keep the file's form: 12.4 reports a track tagged `fre` as `fra`, so compare normalised codes only.
 
 **Edge cases**
 
@@ -202,7 +202,13 @@ The plugin decides server-side and hands the choice to clients through fields th
 
 **Mechanism A: rewrite the PlaybackInfo response (preferred)**
 
-Clients call `POST /Items/{id}/PlaybackInfo` before playing. The server returns `MediaSources[]`, each with `DefaultAudioStreamIndex`, which official clients use as the initial track. The plugin registers an ASP.NET Core action filter (through `IPluginServiceRegistrator` and `MvcOptions.Filters`) that post-processes this response for the calling user: sets `DefaultAudioStreamIndex` and the `AudioStreamIndex` baked into `TranscodingUrl`, and reorders `MediaSources` when another version scores better. An action filter rather than a result filter, because the posted `PlaybackInfoDto` (which may carry the client's own `AudioStreamIndex`, left alone) is only visible as an action argument. To verify: that filters registered by a plugin run on this controller, and that transcoding sessions pick up the rewritten index.
+Clients call `POST /Items/{id}/PlaybackInfo` before playing. The server returns `MediaSources[]`, each with `DefaultAudioStreamIndex`, which official clients use as the initial track. The plugin registers an ASP.NET Core action filter (through `IPluginServiceRegistrator` and `MvcOptions.Filters`) that acts for the calling user in three places (validated on Jellyfin Web 12.4, see `docs/spike-mechanism-a.md`):
+
+- **Before PlaybackInfo runs:** when the request names no audio stream, the filter computes the choice and passes it to the action as the request's own `MediaSourceId` and `AudioStreamIndex`, keeping a `MediaSourceId` the client sent. The server then decides direct play or transcoding for the plugin's track, and builds `TranscodingUrl` and `DefaultAudioStreamIndex` for it. Rewriting only the response is not enough: the server decides the play method for its own track, and a browser that can only direct-play a file's first audio track then plays the wrong one. The server ignores an `AudioStreamIndex` sent without its `MediaSourceId`. Jellyfin Web plays the item's own version whenever the response contains it, so naming the version is what selects it.
+- **After PlaybackInfo runs:** `DefaultAudioStreamIndex` and the `AudioStreamIndex` in `TranscodingUrl` are rewritten for the other versions, and versions with a match move first.
+- **On `GET /Items/{id}`** (and the legacy `/Users/{userId}/Items/{id}`): each version's `DefaultAudioStreamIndex` is set and versions with a match move first. Jellyfin Web's details page pre-selects its version and audio menus from this response and sends them with Play.
+
+An action filter rather than a result filter, because the posted `PlaybackInfoDto` is only visible as an action argument. **A client-sent `AudioStreamIndex` is left alone:** it is a manual switch, a details-page choice, or the client's own next-episode carry-over. Still to verify: Jellyfin Android TV.
 
 **Mechanism B: pre-seed per-user item data (fallback)**
 
@@ -294,8 +300,10 @@ The plugin is published openly and installed through a public plugin repository,
 - **Manual switch:** creates a series override silently, with a notification on clients that support session messages.
 - **Admin defaults:** the admin sets a server default profile for all users; users override it.
 - **Distribution:** public plugin repository.
+- **Client-sent audio stream:** a PlaybackInfo request that carries its own `AudioStreamIndex` is left alone (manual switch, details-page choice, client carry-over). The plugin acts only when the client leaves the choice to the server.
 
 **Still open**
 
+- **Mechanism A go / no-go (milestone 1):** works on Jellyfin Web 12.4 with the changes in "Technical architecture" (`docs/spike-mechanism-a.md`). Android TV is still to be run. Go if it starts on the plugin's track in direct play and transcoding; otherwise Mechanism B, possibly for that client only.
 - **Dataset licence:** TMDB's API terms may not allow republishing data pulled from its API in a public repository. Check the terms before using TMDB as a source for the dataset; if not allowed, build it from Wikidata only and keep TMDB for opt-in live lookups.
 - Optional later: detect the spoken language of `und` tracks with a speech language-ID model, run offline as a scheduled task?
