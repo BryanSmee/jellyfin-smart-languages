@@ -45,7 +45,7 @@ public static partial class PlaybackInfoRewriter
             source.DefaultAudioStreamIndex = index.Value;
             if (source.TranscodingUrl is not null)
             {
-                source.TranscodingUrl = ReplaceAudioStreamIndex(source.TranscodingUrl, index.Value);
+                source.TranscodingUrl = SetAudioStreamIndex(source.TranscodingUrl, index.Value);
             }
 
             picked.Add(source);
@@ -60,14 +60,29 @@ public static partial class PlaybackInfoRewriter
     }
 
     /// <summary>
-    /// Replaces the value of the <c>AudioStreamIndex</c> query parameter, leaving the rest of the URL as is.
+    /// Sets the <c>AudioStreamIndex</c> query parameter, leaving the rest of the URL as is.
     /// </summary>
+    /// <remarks>
+    /// The server leaves the parameter out when it picked no audio stream; it is appended then, so the transcode
+    /// plays the same stream the response announces.
+    /// </remarks>
     /// <param name="url">The transcoding URL.</param>
     /// <param name="index">The new audio stream index.</param>
-    /// <returns>The URL with the new index, or the same URL when it has no <c>AudioStreamIndex</c>.</returns>
-    public static string ReplaceAudioStreamIndex(string url, int index)
+    /// <returns>The URL with the new index.</returns>
+    public static string SetAudioStreamIndex(string url, int index)
     {
-        return AudioStreamIndexParameter().Replace(url, match => match.Groups["name"].Value + index.ToString(CultureInfo.InvariantCulture));
+        ArgumentNullException.ThrowIfNull(url);
+
+        string value = index.ToString(CultureInfo.InvariantCulture);
+        if (AudioStreamIndexParameter().IsMatch(url))
+        {
+            return AudioStreamIndexParameter().Replace(url, match => match.Groups["name"].Value + value);
+        }
+
+        int fragment = url.IndexOf('#', StringComparison.Ordinal);
+        string path = fragment < 0 ? url : url[..fragment];
+        string separator = path.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+        return path + separator + "AudioStreamIndex=" + value + (fragment < 0 ? string.Empty : url[fragment..]);
     }
 
     [GeneratedRegex(@"(?<=[?&])(?<name>AudioStreamIndex=)[^&#]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

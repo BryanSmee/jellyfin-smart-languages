@@ -65,6 +65,26 @@ public class PlaybackInfoFilterTests
     }
 
     [Fact]
+    public async Task QueryUserIdWinsOverBody()
+    {
+        var response = Response();
+
+        await RunFilter(response, claimUser: MappedUser, arguments: new() { ["userId"] = OtherUser, ["playbackInfoDto"] = new FakePlaybackInfoDto { UserId = MappedUser } });
+
+        AssertUnchanged(response);
+    }
+
+    [Fact]
+    public async Task RewritesGetPlaybackInfo()
+    {
+        var response = Response();
+
+        await RunFilter(response, claimUser: MappedUser, arguments: new() { ["itemId"] = Guid.NewGuid(), ["userId"] = null }, action: "GetPlaybackInfo");
+
+        Assert.Equal(2, response.MediaSources[0].DefaultAudioStreamIndex);
+    }
+
+    [Fact]
     public async Task UnmappedUserLeavesResponseAlone()
     {
         var response = Response();

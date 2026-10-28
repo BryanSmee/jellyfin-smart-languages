@@ -202,7 +202,7 @@ The plugin decides server-side and hands the choice to clients through fields th
 
 **Mechanism A: rewrite the PlaybackInfo response (preferred)**
 
-Clients call `POST /Items/{id}/PlaybackInfo` before playing. The server returns `MediaSources[]`, each with `DefaultAudioStreamIndex`, which official clients use as the initial track. The plugin registers an ASP.NET Core result filter (through `IPluginServiceRegistrator` and `MvcOptions.Filters`) that post-processes this response for the calling user: sets `DefaultAudioStreamIndex`, and reorders `MediaSources` when another version scores better. To verify: that filters registered by a plugin run on this controller, and that transcoding sessions pick up the rewritten index.
+Clients call `POST /Items/{id}/PlaybackInfo` before playing. The server returns `MediaSources[]`, each with `DefaultAudioStreamIndex`, which official clients use as the initial track. The plugin registers an ASP.NET Core action filter (through `IPluginServiceRegistrator` and `MvcOptions.Filters`) that post-processes this response for the calling user: sets `DefaultAudioStreamIndex` and the `AudioStreamIndex` baked into `TranscodingUrl`, and reorders `MediaSources` when another version scores better. An action filter rather than a result filter, because the posted `PlaybackInfoDto` (which may carry the client's own `AudioStreamIndex`, left alone) is only visible as an action argument. To verify: that filters registered by a plugin run on this controller, and that transcoding sessions pick up the rewritten index.
 
 **Mechanism B: pre-seed per-user item data (fallback)**
 

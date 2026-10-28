@@ -35,10 +35,12 @@ public class PlaybackInfoRewriterTests
     [InlineData("/v?AudioStreamIndex=1", "/v?AudioStreamIndex=4")]
     [InlineData("/v?a=1&audiostreamindex=1", "/v?a=1&audiostreamindex=4")]
     [InlineData("/v?MaxAudioStreamIndex=1&AudioStreamIndex=", "/v?MaxAudioStreamIndex=1&AudioStreamIndex=4")]
-    [InlineData("/v?a=1", "/v?a=1")]
-    public void ReplaceAudioStreamIndexTouchesOnlyThatParameter(string url, string expected)
+    [InlineData("/v?a=1", "/v?a=1&AudioStreamIndex=4")]
+    [InlineData("/v", "/v?AudioStreamIndex=4")]
+    [InlineData("/v?a=1#t", "/v?a=1&AudioStreamIndex=4#t")]
+    public void SetAudioStreamIndexTouchesOnlyThatParameter(string url, string expected)
     {
-        Assert.Equal(expected, PlaybackInfoRewriter.ReplaceAudioStreamIndex(url, 4));
+        Assert.Equal(expected, PlaybackInfoRewriter.SetAudioStreamIndex(url, 4));
     }
 
     [Fact]

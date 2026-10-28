@@ -52,6 +52,11 @@
                 var rows = page.querySelector('#SmartAudioRows');
                 var users = [];
 
+                function showError(message) {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert({ title: 'Smart Audio Language', message: message });
+                }
+
                 function addRow(entry) {
                     var row = page.querySelector('#SmartAudioRowTemplate').content.firstElementChild.cloneNode(true);
                     var select = row.querySelector('.smartAudioUser');
@@ -89,6 +94,8 @@
                             addRow({ UserId: entry.UserId.replace(/-/g, ''), Language: entry.Language });
                         });
                         Dashboard.hideLoadingMsg();
+                    }).catch(function () {
+                        showError('Could not load the users or the plugin configuration.');
                     });
                 });
 
@@ -98,17 +105,29 @@
 
                 page.querySelector('#SmartAudioConfigForm').addEventListener('submit', function (e) {
                     e.preventDefault();
+                    var entries = Array.prototype.map.call(rows.querySelectorAll('.smartAudioRow'), function (row) {
+                        return {
+                            UserId: row.querySelector('.smartAudioUser').value,
+                            Language: row.querySelector('.smartAudioLanguage').value.trim().toLowerCase()
+                        };
+                    });
+                    var duplicate = entries.find(function (entry, i) {
+                        return entries.some(function (other, j) { return j < i && other.UserId === entry.UserId; });
+                    });
+                    if (duplicate) {
+                        var name = (users.find(function (user) { return user.Id === duplicate.UserId; }) || { Name: duplicate.UserId }).Name;
+                        showError(name + ' is listed more than once: keep one row per user.');
+                        return false;
+                    }
+
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                        config.SpikeUserLanguages = Array.prototype.map.call(rows.querySelectorAll('.smartAudioRow'), function (row) {
-                            return {
-                                UserId: row.querySelector('.smartAudioUser').value,
-                                Language: row.querySelector('.smartAudioLanguage').value.trim().toLowerCase()
-                            };
-                        });
-                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
-                            Dashboard.processPluginConfigurationUpdateResult(result);
-                        });
+                        config.SpikeUserLanguages = entries;
+                        return ApiClient.updatePluginConfiguration(pluginId, config);
+                    }).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    }).catch(function () {
+                        showError('Could not save the configuration.');
                     });
                     return false;
                 });
