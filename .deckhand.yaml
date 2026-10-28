@@ -3,6 +3,9 @@
 # The base image has Node 26 but no .NET; Jellyfin 12.4 plugins need the .NET 10 SDK, and the pinned Jellyfin sources live there too.
 dockerfile: .deckhand/Dockerfile
 
+# A container engine next to work runs, to build and start the images a change touches (granted with allow_docker).
+docker: true
+
 # Restore NuGet packages once a solution exists; skipped while the repo is still spec-only.
 setup: |
   sln=$(ls *.sln *.slnx 2>/dev/null | head -n1)
